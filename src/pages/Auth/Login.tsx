@@ -8,7 +8,7 @@ import { motion } from 'framer-motion';
 import { useAuth } from '../../context/AuthContext';
 import { auth, db, googleProvider } from '../../services/firebase';
 import { signInWithEmailAndPassword, signInWithPopup } from 'firebase/auth';
-import { doc, getDoc, setDoc } from 'firebase/firestore';
+import { doc, getDoc, setDoc, query, collection, where, getDocs } from 'firebase/firestore';
 
 export default function Login() {
   const [params] = useSearchParams();
@@ -38,7 +38,6 @@ export default function Login() {
   const resolveSponsorUid = async (sponsorCode: string | null): Promise<string | null> => {
     if (!sponsorCode) return null;
     try {
-      const { query, collection, where, getDocs } = await import('firebase/firestore');
       const q = query(collection(db, "users"), where("referralCode", "==", sponsorCode));
       const querySnapshot = await getDocs(q);
       if (!querySnapshot.empty) {
