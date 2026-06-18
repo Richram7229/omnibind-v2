@@ -22,7 +22,7 @@ export default function Wallet() {
 
     const numAmount = Number(amount);
 
-    if (activeTab === 'withdraw' && numAmount > (userData?.balance || 0)) {
+    if (activeTab === 'withdraw' && numAmount > (userData?.currentBalance || 0)) {
       return toast.error("Insufficient balance");
     }
 
@@ -67,7 +67,7 @@ export default function Wallet() {
              <WalletIcon size={32} className="text-gold-500" />
            </div>
            <div className="text-sm text-gray-400 font-medium mb-1 z-10">Available Balance</div>
-           <div className="text-4xl font-bold text-gradient z-10">{formatCurrency(userData?.balance || 0)}</div>
+           <div className="text-4xl font-bold text-gradient z-10">{formatCurrency(userData?.currentBalance || 0)}</div>
         </Card>
 
         <Card className="p-0 overflow-hidden flex flex-col">

@@ -2,19 +2,24 @@ import React, { useEffect, useState } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { Card, Button, Input } from '../components/ui';
 import { formatCurrency } from '../lib/utils';
-import { ArrowUpRight, ArrowDownRight, Wallet, Users, Zap, Award } from 'lucide-react';
+import { ArrowUpRight, ArrowDownRight, Wallet, Users, Zap, Award, ShieldAlert } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { ActiveStake, Transaction } from '../types';
 import { db } from '../services/firebase';
-import { collection, query, where, orderBy, getDocs, limit } from 'firebase/firestore';
+import { collection, query, where, orderBy, getDocs, limit, getDoc, doc } from 'firebase/firestore';
 
 export default function Dashboard() {
   const { userData, transactions } = useAuth() as any;
   const [activeStake, setActiveStake] = useState<ActiveStake | null>(null);
   const [loading, setLoading] = useState(true);
+  const [treasuryBal, setTreasuryBal] = useState(0);
 
   // Use globally loaded transactions straight from the AuthContext
   const recentTx = transactions.slice(0, 5);
+  
+  const pendingWithdrawals = transactions
+    .filter((tx: any) => tx.type === 'withdrawal' && tx.status === 'pending')
+    .reduce((acc: number, tx: any) => acc + tx.amount, 0);
 
   useEffect(() => {
     const fetchData = async () => {
@@ -35,6 +40,9 @@ export default function Dashboard() {
         } else {
           setActiveStake(null);
         }
+        
+        const tDoc = await getDoc(doc(db, "system", "treasury"));
+        if (tDoc.exists()) setTreasuryBal(tDoc.data().balance);
       } catch(e) {
         console.error(e);
       } finally {
@@ -45,10 +53,10 @@ export default function Dashboard() {
   }, [userData?.uid]);
 
   const stats = [
-    { label: "Total Balance", value: formatCurrency(userData?.balance || 0), icon: <Wallet className="text-blue-400" size={24} /> },
-    { label: "Total Earned", value: formatCurrency(userData?.totalEarned || 0), icon: <Zap className="text-yellow-400" size={24} /> },
-    { label: "Team Size", value: (userData?.teamSize || 0).toString(), icon: <Users className="text-green-400" size={24} /> },
-    { label: "Active Package", value: activeStake ? formatCurrency(activeStake.amount) : "None", icon: <Award className="text-purple-400" size={24} /> },
+    { label: "Available Balance", value: formatCurrency(userData?.currentBalance || 0), icon: <Wallet className="text-blue-400" size={24} /> },
+    { label: "Locked Balance", value: formatCurrency(userData?.lockedBalance || 0), icon: <Award className="text-purple-400" size={24} /> },
+    { label: "Pending Withdrawals", value: formatCurrency(pendingWithdrawals), icon: <Zap className="text-yellow-400" size={24} /> },
+    { label: "Treasury Health", value: formatCurrency(treasuryBal), icon: <ShieldAlert className="text-green-400" size={24} /> },
   ];
 
   return (
@@ -140,16 +148,16 @@ export default function Dashboard() {
               recentTx.map((tx) => (
                 <div key={tx.id} className="flex items-center justify-between p-3 rounded-xl bg-navy-800/30 hover:bg-navy-800/50 transition-colors">
                   <div className="flex items-center space-x-3">
-                    <div className={`p-2 rounded-lg ${tx.type === 'deposit' || tx.type === 'reward' || tx.type === 'referral_commission' ? 'bg-green-500/10 text-green-500' : 'bg-red-500/10 text-red-500'}`}>
-                      {tx.type === 'withdrawal' ? <ArrowUpRight size={18} /> : <ArrowDownRight size={18} />}
+                    <div className={`p-2 rounded-lg ${['deposit', 'reward', 'referral_commission', 'ROI_REWARD', 'ADMIN_CREDIT', 'DEPOSIT_APPROVED'].includes(tx.type) ? 'bg-green-500/10 text-green-500' : 'bg-red-500/10 text-red-500'}`}>
+                      {['withdrawal', 'WITHDRAW_APPROVED', 'STAKE_CREATED', 'ADMIN_DEBIT', 'staking_purchase'].includes(tx.type) ? <ArrowUpRight size={18} /> : <ArrowDownRight size={18} />}
                     </div>
                     <div>
-                      <div className="text-sm font-medium capitalize">{tx.type.replace('_', ' ')}</div>
+                      <div className="text-sm font-medium capitalize">{tx.type.replace(/_/g, ' ')}</div>
                       <div className="text-xs text-gray-500">{new Date(tx.date).toLocaleDateString()}</div>
                     </div>
                   </div>
-                  <div className={`font-semibold ${tx.type === 'withdrawal' ? 'text-white' : 'text-green-400'}`}>
-                    {tx.type === 'withdrawal' ? '-' : '+'}{formatCurrency(tx.amount)}
+                  <div className={`font-semibold ${['withdrawal', 'WITHDRAW_APPROVED', 'STAKE_CREATED', 'ADMIN_DEBIT', 'staking_purchase'].includes(tx.type) ? 'text-white' : 'text-green-400'}`}>
+                    {['withdrawal', 'WITHDRAW_APPROVED', 'STAKE_CREATED', 'ADMIN_DEBIT', 'staking_purchase'].includes(tx.type) ? '-' : '+'}{formatCurrency(tx.amount)}
                   </div>
                 </div>
               ))

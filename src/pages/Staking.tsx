@@ -7,7 +7,7 @@ import toast from 'react-hot-toast';
 import { Check, ShieldAlert, Timer, Calculator, TrendingUp } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { db } from '../services/firebase';
-import { collection, addDoc, doc, updateDoc } from 'firebase/firestore';
+import { collection, addDoc, doc, updateDoc, runTransaction } from 'firebase/firestore';
 
 export default function Staking() {
   const { userData, refreshUserData } = useAuth() as any;
@@ -20,34 +20,51 @@ export default function Staking() {
 
   const handleStake = async () => {
     if (!selectedPack) return;
-    if ((userData?.balance || 0) < selectedPack.amount) {
+    if ((userData?.currentBalance || 0) < selectedPack.amount) {
       toast.error("Insufficient wallet balance. Please deposit first.");
       return;
     }
 
     setLoading(true);
     try {
-      await addDoc(collection(db, "transactions"), {
-        userId: userData.uid,
-        username: userData.username,
-        type: 'staking_purchase',
-        amount: selectedPack.amount,
-        status: 'completed',
-        date: Date.now(),
-        details: `Purchased package ${selectedPack.id}`
-      });
+      await runTransaction(db, async (transaction) => {
+        const userRef = doc(db, "users", userData.uid);
+        const userDoc = await transaction.get(userRef);
+        
+        if (!userDoc.exists()) throw new Error("User not found");
+        const curBal = userDoc.data().currentBalance || 0;
+        const curLocked = userDoc.data().lockedBalance || 0;
+        if (curBal < selectedPack.amount) throw new Error("Insufficient balance");
+        
+        transaction.update(userRef, { 
+          currentBalance: curBal - selectedPack.amount,
+          lockedBalance: curLocked + selectedPack.amount
+        });
 
-      const startDate = Date.now();
-      const endDate = startDate + (selectedPack.lockDays * 24 * 60 * 60 * 1000);
-      await addDoc(collection(db, "stakes"), {
-        userId: userData.uid,
-        packageId: selectedPack.id,
-        amount: selectedPack.amount,
-        startDate,
-        endDate,
-        totalClaimed: 0,
-        lastClaimDate: startDate,
-        status: 'active'
+        const txRef = doc(collection(db, "transactions"));
+        transaction.set(txRef, {
+          userId: userData.uid,
+          username: userData.username,
+          type: 'STAKE_CREATED',
+          amount: selectedPack.amount,
+          status: 'completed',
+          date: Date.now(),
+          details: `Purchased package ${selectedPack.id}`
+        });
+
+        const startDate = Date.now();
+        const endDate = startDate + (selectedPack.lockDays * 24 * 60 * 60 * 1000);
+        const stakeRef = doc(collection(db, "stakes"));
+        transaction.set(stakeRef, {
+          userId: userData.uid,
+          packageId: selectedPack.id,
+          amount: selectedPack.amount,
+          startDate,
+          endDate,
+          totalClaimed: 0,
+          lastClaimDate: startDate,
+          status: 'active'
+        });
       });
 
       toast.success("Staking successful!");
@@ -140,7 +157,7 @@ export default function Staking() {
             <Card className="bg-gradient-to-r from-navy-800 to-navy-900 border-gold-500/20 max-w-xl mx-auto flex flex-col sm:flex-row items-center justify-between p-6">
                <div className="mb-4 sm:mb-0">
                  <h3 className="text-lg font-bold">Selected: {formatCurrency(selectedPack.amount)}</h3>
-                 <p className="text-sm text-gray-400">Current Balance: {formatCurrency(userData?.balance || 0)}</p>
+                 <p className="text-sm text-gray-400">Current Balance: {formatCurrency(userData?.currentBalance || 0)}</p>
                </div>
                <Button onClick={handleStake} isLoading={loading} className="w-full sm:w-auto">
                  Confirm Stake

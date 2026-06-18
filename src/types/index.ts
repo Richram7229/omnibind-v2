@@ -1,4 +1,4 @@
-export type UserRole = "user" | "admin";
+export type UserRole = "user" | "admin" | "master_admin";
 
 export interface UserData {
   uid: string;
@@ -10,10 +10,12 @@ export interface UserData {
   sponsorCode: string | null;
   sponsorUid: string | null;
   role: UserRole;
-  balance: number;
-  totalEarned: number;
+  currentBalance: number;
+  lockedBalance: number;
+  totalEarnings: number;
   teamSize: number;
   createdAt: number;
+  accountStatus?: "active" | "frozen";
 }
 
 export interface StakingPackage {
@@ -43,7 +45,7 @@ export interface ActiveStake {
   status: "active" | "completed";
 }
 
-export type TransactionType = "deposit" | "withdrawal" | "reward" | "referral_commission" | "staking_purchase";
+export type TransactionType = "deposit" | "withdrawal" | "reward" | "referral_commission" | "staking_purchase" | "DEPOSIT_APPROVED" | "WITHDRAW_APPROVED" | "STAKE_CREATED" | "ROI_REWARD" | "ADMIN_CREDIT" | "ADMIN_DEBIT";
 export type TransactionStatus = "pending" | "completed" | "rejected";
 
 export interface Transaction {
@@ -54,4 +56,22 @@ export interface Transaction {
   status: TransactionStatus;
   date: number;
   details: string;
+  username?: string;
+  walletAddress?: string;
+}
+
+export interface Treasury {
+  balance: number;
+  totalCredits: number;
+  totalDebits: number;
+}
+
+export interface TreasuryLog {
+  id: string;
+  type: "credit" | "debit";
+  amount: number;
+  reason: string;
+  date: number;
+  relatedUserId?: string;
+  relatedTransactionId?: string;
 }

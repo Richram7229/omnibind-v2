@@ -30,12 +30,23 @@ function ReferralTracker() {
 }
 
 function ProtectedRoute({ children, requireAdmin = false }: { children: React.ReactNode, requireAdmin?: boolean }) {
-  const { user, userData, loading } = useAuth();
+  const { user, userData, loading, logout } = useAuth() as any;
 
   if (loading) return <div className="h-screen w-full flex items-center justify-center bg-background"><div className="animate-spin rounded-full h-12 w-12 border-b-2 border-gold-500" /></div>;
   if (!user) return <Navigate to="/login" replace />;
   if (!userData) return <div className="h-screen w-full flex items-center justify-center bg-background"><div className="animate-spin rounded-full h-12 w-12 border-b-2 border-gold-500" /></div>;
-  if (requireAdmin && userData.role !== 'admin') return <Navigate to="/" replace />;
+  
+  if (userData.accountStatus === 'frozen') {
+    return (
+      <div className="h-screen w-full flex flex-col items-center justify-center bg-background p-4 text-center">
+        <h1 className="text-3xl font-bold text-red-500 mb-2">Account Frozen</h1>
+        <p className="text-gray-400 mb-6">Your account has been suspended by the administrator. Please contact support.</p>
+        <button onClick={logout} className="px-6 py-2 bg-navy-800 text-white rounded hover:bg-navy-700 transition">Logout</button>
+      </div>
+    );
+  }
+
+  if (requireAdmin && userData.role !== 'admin' && userData.role !== 'master_admin') return <Navigate to="/" replace />;
 
   return <>{children}</>;
 }

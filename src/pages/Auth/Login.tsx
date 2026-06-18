@@ -72,10 +72,12 @@ export default function Login() {
            sponsorCode: sponsorUid ? sponsorFromUrl : null,
            sponsorUid: sponsorUid,
            role: "user",
-           balance: 500,
-           totalEarned: 0,
+           currentBalance: 0,
+           lockedBalance: 0,
+           totalEarnings: 0,
            teamSize: 0,
-           createdAt: Date.now()
+           createdAt: Date.now(),
+           accountStatus: "active" as const
         };
         await setDoc(userDocRef, userData);
         localStorage.removeItem('sponsor');

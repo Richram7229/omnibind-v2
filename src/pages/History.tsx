@@ -52,7 +52,7 @@ export default function History() {
         new Date(tx.date).toLocaleString(),
         tx.type.replace(/_/g, ' '),
         tx.status,
-        `${tx.type === 'withdrawal' || tx.type.includes('purchase') ? '-' : '+'}${formatCurrency(tx.amount)}`
+        `${['withdrawal', 'WITHDRAW_APPROVED', 'STAKE_CREATED', 'ADMIN_DEBIT', 'staking_purchase'].includes(tx.type) ? '-' : '+'}${formatCurrency(tx.amount)}`
       ];
       tableRows.push(txData);
     });
@@ -101,8 +101,8 @@ export default function History() {
                   <tr key={tx.id} className="border-b border-navy-800/50 hover:bg-navy-800/30 transition-colors">
                     <td className="p-4">
                       <div className="flex items-center space-x-3">
-                        <div className={`p-2 rounded-lg ${tx.type === 'deposit' || tx.type === 'reward' || tx.type.includes('commission') ? 'bg-green-500/10 text-green-500' : 'bg-red-500/10 text-red-500'}`}>
-                          {tx.type === 'withdrawal' || tx.type.includes('purchase') ? <ArrowUpRight size={18} /> : <ArrowDownRight size={18} />}
+                        <div className={`p-2 rounded-lg ${['deposit', 'reward', 'referral_commission', 'ROI_REWARD', 'ADMIN_CREDIT', 'DEPOSIT_APPROVED'].includes(tx.type) ? 'bg-green-500/10 text-green-500' : 'bg-red-500/10 text-red-500'}`}>
+                          {['withdrawal', 'WITHDRAW_APPROVED', 'STAKE_CREATED', 'ADMIN_DEBIT', 'staking_purchase'].includes(tx.type) ? <ArrowUpRight size={18} /> : <ArrowDownRight size={18} />}
                         </div>
                         <div>
                           <div className="font-medium capitalize text-sm">{tx.type.replace(/_/g, ' ')}</div>
@@ -117,8 +117,8 @@ export default function History() {
                         <span className="capitalize text-gray-300">{tx.status}</span>
                       </div>
                     </td>
-                    <td className={`p-4 text-right font-bold ${tx.type === 'withdrawal' || tx.type.includes('purchase') ? 'text-white' : 'text-green-400'}`}>
-                      {tx.type === 'withdrawal' || tx.type.includes('purchase') ? '-' : '+'}{formatCurrency(tx.amount)}
+                    <td className={`p-4 text-right font-bold ${['withdrawal', 'WITHDRAW_APPROVED', 'STAKE_CREATED', 'ADMIN_DEBIT', 'staking_purchase'].includes(tx.type) ? 'text-white' : 'text-green-400'}`}>
+                      {['withdrawal', 'WITHDRAW_APPROVED', 'STAKE_CREATED', 'ADMIN_DEBIT', 'staking_purchase'].includes(tx.type) ? '-' : '+'}{formatCurrency(tx.amount)}
                     </td>
                   </tr>
                 ))

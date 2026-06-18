@@ -38,7 +38,7 @@ export function DashboardLayout() {
     { name: 'Settings', path: '/settings', icon: <Settings size={20} /> },
   ];
 
-  if (userData?.role === 'admin') {
+  if (userData?.role === 'admin' || userData?.role === 'master_admin') {
     navLinks.push({ name: 'Admin Panel', path: '/admin', icon: <ShieldCheck size={20} className="text-gold-500" /> });
   }
 

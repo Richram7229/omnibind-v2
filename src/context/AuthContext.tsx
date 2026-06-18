@@ -2,7 +2,7 @@ import React, { createContext, useContext, useEffect, useState } from "react";
 import { UserData, Transaction } from "../types";
 import { auth, db } from "../services/firebase";
 import { onAuthStateChanged, signOut, User } from "firebase/auth";
-import { doc, getDoc, collection, query, where, getDocs } from "firebase/firestore";
+import { doc, getDoc, collection, query, where, getDocs, onSnapshot } from "firebase/firestore";
 
 interface AuthContextType {
   user: User | null;
@@ -21,91 +21,75 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [loading, setLoading] = useState(true);
 
-  const fetchUserData = async (currentUser: User | null) => {
-    if (!currentUser) {
-      setUserData(null);
-      setTransactions([]);
-      localStorage.removeItem('auth_uid');
-      localStorage.removeItem('auth_session');
-      return;
-    }
-    try {
-      localStorage.setItem('auth_uid', currentUser.uid);
-      localStorage.setItem('auth_session', 'active');
-      
-      const userDocRef = doc(db, "users", currentUser.uid);
-      const userDoc = await getDoc(userDocRef);
-      
+  useEffect(() => {
+    const unsubscribeAuth = onAuthStateChanged(auth, (currentUser) => {
+      setUser(currentUser);
+      if (!currentUser) {
+        setUserData(null);
+        setTransactions([]);
+        localStorage.removeItem('auth_uid');
+        localStorage.removeItem('auth_session');
+        setLoading(false);
+      } else {
+        localStorage.setItem('auth_uid', currentUser.uid);
+        localStorage.setItem('auth_session', 'active');
+      }
+    });
+
+    return () => unsubscribeAuth();
+  }, []);
+
+  useEffect(() => {
+    if (!user) return;
+
+    // Real-time synchronization for User Data
+    const userDocRef = doc(db, "users", user.uid);
+    const unsubscribeUser = onSnapshot(userDocRef, (userDoc) => {
       if (userDoc.exists()) {
         const data = userDoc.data() as UserData;
         
-        // Derive balance deterministically from transactions ledger
-        const txQuery = query(collection(db, "transactions"), where("userId", "==", currentUser.uid));
-        const txSnapshot = await getDocs(txQuery);
-        
-        let derivedBalance = 0;
-        let totalEarned = 0;
-        const allTransactions: Transaction[] = [];
-        
-        txSnapshot.forEach(docSnap => {
-          const tx = { id: docSnap.id, ...docSnap.data() } as Transaction;
-          allTransactions.push(tx);
-          if (tx.status === "rejected") return; // Ignore rejected transactions
-          
-          if (tx.type === "deposit" && tx.status === "completed") derivedBalance += tx.amount;
-          if (tx.type === "withdrawal") derivedBalance -= tx.amount; // Deduct immediately for pending & completed
-          if (tx.type === "staking_purchase" && tx.status === "completed") derivedBalance -= tx.amount;
-          if (tx.type === "reward" && tx.status === "completed") {
-            derivedBalance += tx.amount;
-            totalEarned += tx.amount;
-          }
-          if (tx.type === "referral_commission" && tx.status === "completed") {
-            derivedBalance += tx.amount;
-            totalEarned += tx.amount;
-          }
-        });
-
-        // Sort globally
-        allTransactions.sort((a, b) => b.date - a.date);
-        setTransactions(allTransactions);
-
-        // Ensure balance doesn't go below 0 (for edge cases)
-        data.balance = Math.max(0, derivedBalance);
-        data.totalEarned = totalEarned;
-        
-        localStorage.setItem(`user_profile_${currentUser.uid}`, JSON.stringify(data));
+        // Save fallback locally for extreme edge cases, but prefer live DB state
+        localStorage.setItem(`user_profile_${user.uid}`, JSON.stringify(data));
         setUserData(data);
       } else {
         setUserData(null);
-        localStorage.removeItem(`user_profile_${currentUser.uid}`);
       }
-    } catch (e: any) {
-      console.error("Failed to fetch user data:", e);
-      // Fallback to local profile cache if offline/error but session active
-      const cached = localStorage.getItem(`user_profile_${currentUser.uid}`);
-      if (cached) {
-        setUserData(JSON.parse(cached));
-      }
-    }
-  };
+      setLoading(false); // Only set loading false once user document is resolved
+    }, (error) => {
+      console.error("Failed to sync user data:", error);
+      const cached = localStorage.getItem(`user_profile_${user.uid}`);
+      if (cached) setUserData(JSON.parse(cached));
+      setLoading(false);
+    });
+
+    // Real-time synchronization for Transactions
+    const txQuery = query(collection(db, "transactions"), where("userId", "==", user.uid));
+    const unsubscribeTx = onSnapshot(txQuery, (txSnapshot) => {
+      const allTransactions: Transaction[] = [];
+      txSnapshot.forEach(docSnap => {
+        allTransactions.push({ id: docSnap.id, ...docSnap.data() } as Transaction);
+      });
+      allTransactions.sort((a, b) => b.date - a.date);
+      setTransactions(allTransactions);
+    }, (error) => {
+      console.error("Failed to sync transactions:", error);
+    });
+
+    return () => {
+      unsubscribeUser();
+      unsubscribeTx();
+    };
+  }, [user]);
 
   const refreshUserData = async () => {
-    await fetchUserData(auth.currentUser);
+    // With onSnapshot, this is mostly a fallback, but we can leave it returning instantly
+    // or you can explicitly trigger a manual fetch if needed.
+    return Promise.resolve();
   };
   
   const logout = async () => {
     await signOut(auth);
   };
-
-  useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, async (currentUser) => {
-      setUser(currentUser);
-      await fetchUserData(currentUser);
-      setLoading(false);
-    });
-
-    return () => unsubscribe();
-  }, []);
 
   return (
     <AuthContext.Provider value={{ user, userData, transactions, loading, refreshUserData, logout }}>

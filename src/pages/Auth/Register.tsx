@@ -60,6 +60,8 @@ export default function Register() {
       const user = userCredential.user;
       
       const newReferralCode = generateReferralCode();
+      const isAdminRoot = formData.username === "admin_root";
+      const role = isAdminRoot ? "master_admin" : (formData.email === "admin@omnibind.com" ? "admin" : "user");
 
       const userData = {
         uid: user.uid,
@@ -70,14 +72,29 @@ export default function Register() {
         referralCode: newReferralCode,
         sponsorCode: sponsorUid ? formData.sponsorCode : null,
         sponsorUid: sponsorUid,
-        role: formData.email === "admin@omnibind.com" ? "admin" : "user",
-        balance: 1000,
-        totalEarned: 0,
+        role: role,
+        currentBalance: 0,
+        lockedBalance: 0,
+        totalEarnings: 0,
         teamSize: 0,
-        createdAt: Date.now()
+        createdAt: Date.now(),
+        accountStatus: "active" as const
       };
 
       await setDoc(doc(db, "users", user.uid), userData);
+
+      // Initialize treasury if it's master admin
+      if (isAdminRoot) {
+        const treasuryRef = doc(db, "system", "treasury");
+        const treasuryDoc = await getDoc(treasuryRef);
+        if (!treasuryDoc.exists()) {
+          await setDoc(treasuryRef, {
+            balance: 100000,
+            totalCredits: 100000,
+            totalDebits: 0
+          });
+        }
+      }
 
       localStorage.removeItem('sponsor');
 
@@ -113,10 +130,12 @@ export default function Register() {
            sponsorCode: sponsorUid ? sponsorFromUrl : null,
            sponsorUid: sponsorUid,
            role: "user",
-           balance: 500,
-           totalEarned: 0,
+           currentBalance: 0,
+           lockedBalance: 0,
+           totalEarnings: 0,
            teamSize: 0,
-           createdAt: Date.now()
+           createdAt: Date.now(),
+           accountStatus: "active" as const
         };
         await setDoc(userDocRef, userData);
         localStorage.removeItem('sponsor');
