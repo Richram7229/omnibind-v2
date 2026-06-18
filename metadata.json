@@ -1,0 +1,6 @@
+{
+  "name": "Omnibind Network",
+  "description": "Premium MLM Crypto Staking Platform",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

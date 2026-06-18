@@ -1,0 +1,69 @@
+{
+  "entities": {
+    "User": {
+      "title": "User",
+      "description": "User profile data",
+      "type": "object",
+      "properties": {
+        "uid": { "type": "string" },
+        "username": { "type": "string" },
+        "email": { "type": "string" },
+        "walletAddress": { "type": "string" },
+        "pin": { "type": "string" },
+        "referralCode": { "type": "string" },
+        "sponsorCode": { "type": "string" },
+        "role": { "type": "string", "enum": ["user", "admin"] },
+        "balance": { "type": "number" },
+        "totalEarned": { "type": "number" },
+        "teamSize": { "type": "number" },
+        "createdAt": { "type": "number" }
+      },
+      "required": ["uid", "username", "email", "walletAddress", "role"]
+    },
+    "Transaction": {
+      "title": "Transaction",
+      "description": "A financial transaction",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string" },
+        "username": { "type": "string" },
+        "type": { "type": "string" },
+        "amount": { "type": "number" },
+        "status": { "type": "string" },
+        "date": { "type": "number" },
+        "details": { "type": "string" }
+      },
+      "required": ["userId", "type", "amount", "status", "date"]
+    },
+    "Stake": {
+      "title": "Stake",
+      "description": "An active stake",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string" },
+        "packageId": { "type": "string" },
+        "amount": { "type": "number" },
+        "startDate": { "type": "number" },
+        "endDate": { "type": "number" },
+        "totalClaimed": { "type": "number" },
+        "lastClaimDate": { "type": "number" },
+        "status": { "type": "string" }
+      },
+      "required": ["userId", "packageId", "amount", "status"]
+    }
+  },
+  "firestore": {
+    "users": {
+      "schema": { "$ref": "User" },
+      "description": "Users collection"
+    },
+    "transactions": {
+      "schema": { "$ref": "Transaction" },
+      "description": "Transactions collection"
+    },
+    "stakes": {
+      "schema": { "$ref": "Stake" },
+      "description": "Staking collection"
+    }
+  }
+}
