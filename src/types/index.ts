@@ -8,6 +8,7 @@ export interface UserData {
   pin: string; // Stored securely (hashed in a real system)
   referralCode: string;
   sponsorCode: string | null;
+  sponsorUid: string | null;
   role: UserRole;
   balance: number;
   totalEarned: number;

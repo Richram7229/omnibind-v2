@@ -12,6 +12,6 @@ export function formatCurrency(value: number) {
   }).format(value);
 }
 
-export function generateReferralCode(username: string) {
-  return `${username.toUpperCase().replace(/[^A-Z0-9]/g, "").slice(0, 5)}${Math.floor(Math.random() * 1000)}`;
+export function generateReferralCode() {
+  return `REF${Math.floor(Math.random() * 900000) + 100000}`;
 }

@@ -25,9 +25,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     if (!currentUser) {
       setUserData(null);
       setTransactions([]);
+      localStorage.removeItem('auth_uid');
+      localStorage.removeItem('auth_session');
       return;
     }
     try {
+      localStorage.setItem('auth_uid', currentUser.uid);
+      localStorage.setItem('auth_session', 'active');
+      
       const userDocRef = doc(db, "users", currentUser.uid);
       const userDoc = await getDoc(userDocRef);
       
@@ -68,17 +73,24 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         data.balance = Math.max(0, derivedBalance);
         data.totalEarned = totalEarned;
         
+        localStorage.setItem(`user_profile_${currentUser.uid}`, JSON.stringify(data));
         setUserData(data);
       } else {
         setUserData(null);
+        localStorage.removeItem(`user_profile_${currentUser.uid}`);
       }
     } catch (e: any) {
       console.error("Failed to fetch user data:", e);
+      // Fallback to local profile cache if offline/error but session active
+      const cached = localStorage.getItem(`user_profile_${currentUser.uid}`);
+      if (cached) {
+        setUserData(JSON.parse(cached));
+      }
     }
   };
 
   const refreshUserData = async () => {
-    await fetchUserData(user);
+    await fetchUserData(auth.currentUser);
   };
   
   const logout = async () => {

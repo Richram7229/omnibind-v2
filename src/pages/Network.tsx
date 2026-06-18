@@ -17,11 +17,11 @@ export default function Network() {
 
   useEffect(() => {
     const fetchTeam = async () => {
-      if (!userData?.referralCode) return;
+      if (!userData?.uid) return;
       try {
         const q = query(
           collection(db, "users"),
-          where("sponsorCode", "==", userData.referralCode)
+          where("sponsorUid", "==", userData.uid)
         );
         const snapshot = await getDocs(q);
         const fetchedTeam: any[] = [];
@@ -36,7 +36,7 @@ export default function Network() {
       }
     };
     fetchTeam();
-  }, [userData?.referralCode]);
+  }, [userData?.uid]);
 
   const handleCopy = () => {
     navigator.clipboard.writeText(referralUrl);

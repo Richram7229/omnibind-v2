@@ -8,7 +8,7 @@ import { motion } from 'framer-motion';
 import { useAuth } from '../../context/AuthContext';
 import { auth, db, googleProvider } from '../../services/firebase';
 import { createUserWithEmailAndPassword, signInWithPopup } from 'firebase/auth';
-import { doc, getDoc, setDoc } from 'firebase/firestore';
+import { doc, getDoc, setDoc, query, collection, where, getDocs } from 'firebase/firestore';
 
 export default function Register() {
   const [params] = useSearchParams();
@@ -28,21 +28,38 @@ export default function Register() {
   const navigate = useNavigate();
   const { refreshUserData } = useAuth();
 
+  const resolveSponsorUid = async (sponsorCode: string | null): Promise<string | null> => {
+    if (!sponsorCode) return null;
+    try {
+      const q = query(collection(db, "users"), where("referralCode", "==", sponsorCode));
+      const querySnapshot = await getDocs(q);
+      if (!querySnapshot.empty) {
+        return querySnapshot.docs[0].id;
+      }
+      return null;
+    } catch (e) {
+      console.error(e);
+      return null;
+    }
+  };
+
   const handleRegister = async (e: React.FormEvent) => {
     e.preventDefault();
     if (formData.pin.length !== 6 || !/^\d+$/.test(formData.pin)) {
       return toast.error("PIN must be exactly 6 digits");
     }
-    if (formData.sponsorCode && formData.sponsorCode.toLowerCase() === formData.username.toLowerCase()) {
-      return toast.error("Self-referral is not permitted");
-    }
 
     setLoading(true);
     try {
+      const sponsorUid = await resolveSponsorUid(formData.sponsorCode);
+      if (formData.sponsorCode && !sponsorUid) {
+        toast.error("Invalid Sponsor Code. Registration proceeding without sponsor.");
+      }
+
       const userCredential = await createUserWithEmailAndPassword(auth, formData.email, formData.password);
       const user = userCredential.user;
       
-      const newReferralCode = generateReferralCode(formData.username);
+      const newReferralCode = generateReferralCode();
 
       const userData = {
         uid: user.uid,
@@ -51,7 +68,8 @@ export default function Register() {
         walletAddress: formData.walletAddress,
         pin: formData.pin,
         referralCode: newReferralCode,
-        sponsorCode: formData.sponsorCode || null,
+        sponsorCode: sponsorUid ? formData.sponsorCode : null,
+        sponsorUid: sponsorUid,
         role: formData.email === "admin@omnibind.com" ? "admin" : "user",
         balance: 1000,
         totalEarned: 0,
@@ -60,6 +78,8 @@ export default function Register() {
       };
 
       await setDoc(doc(db, "users", user.uid), userData);
+
+      localStorage.removeItem('sponsor');
 
       toast.success('Account created successfully!');
       await refreshUserData();
@@ -82,14 +102,16 @@ export default function Register() {
       
       if (!userDoc.exists()) {
         const email = user.email || "";
+        const sponsorUid = await resolveSponsorUid(sponsorFromUrl);
         const userData = {
            uid: user.uid,
            username: user.displayName || email.split('@')[0],
            email: email,
            walletAddress: '',
            pin: '000000',
-           referralCode: generateReferralCode(email.split('@')[0]),
-           sponsorCode: sponsorFromUrl || null,
+           referralCode: generateReferralCode(),
+           sponsorCode: sponsorUid ? sponsorFromUrl : null,
+           sponsorUid: sponsorUid,
            role: "user",
            balance: 500,
            totalEarned: 0,
@@ -97,6 +119,7 @@ export default function Register() {
            createdAt: Date.now()
         };
         await setDoc(userDocRef, userData);
+        localStorage.removeItem('sponsor');
       }
       
       toast.success('Google Login successful!');

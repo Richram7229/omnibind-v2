@@ -34,7 +34,8 @@ function ProtectedRoute({ children, requireAdmin = false }: { children: React.Re
 
   if (loading) return <div className="h-screen w-full flex items-center justify-center bg-background"><div className="animate-spin rounded-full h-12 w-12 border-b-2 border-gold-500" /></div>;
   if (!user) return <Navigate to="/login" replace />;
-  if (requireAdmin && userData?.role !== 'admin') return <Navigate to="/" replace />;
+  if (!userData) return <div className="h-screen w-full flex items-center justify-center bg-background"><div className="animate-spin rounded-full h-12 w-12 border-b-2 border-gold-500" /></div>;
+  if (requireAdmin && userData.role !== 'admin') return <Navigate to="/" replace />;
 
   return <>{children}</>;
 }

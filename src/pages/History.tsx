@@ -10,7 +10,7 @@ import { db } from '../services/firebase';
 import { collection, query, where, orderBy, getDocs } from 'firebase/firestore';
 
 export default function History() {
-  const { userData, transactions } = useAuth() as any;
+  const { userData, transactions, loading } = useAuth() as any;
   // Transactions are pre-sorted and fully hydrated by AuthContext on load.
   // No need for separate fetch loops.
   

@@ -35,6 +35,22 @@ export default function Login() {
     }
   };
 
+  const resolveSponsorUid = async (sponsorCode: string | null): Promise<string | null> => {
+    if (!sponsorCode) return null;
+    try {
+      const { query, collection, where, getDocs } = await import('firebase/firestore');
+      const q = query(collection(db, "users"), where("referralCode", "==", sponsorCode));
+      const querySnapshot = await getDocs(q);
+      if (!querySnapshot.empty) {
+        return querySnapshot.docs[0].id;
+      }
+      return null;
+    } catch (e) {
+      console.error(e);
+      return null;
+    }
+  };
+
   const signInWithGoogle = async () => {
     setLoading(true);
     try {
@@ -46,14 +62,16 @@ export default function Login() {
       
       if (!userDoc.exists()) {
         const emailAddress = user.email || "";
+        const sponsorUid = await resolveSponsorUid(sponsorFromUrl);
         const userData = {
            uid: user.uid,
            username: user.displayName || emailAddress.split('@')[0],
            email: emailAddress,
            walletAddress: '',
            pin: '000000',
-           referralCode: generateReferralCode(emailAddress.split('@')[0]),
-           sponsorCode: sponsorFromUrl || null,
+           referralCode: generateReferralCode(),
+           sponsorCode: sponsorUid ? sponsorFromUrl : null,
+           sponsorUid: sponsorUid,
            role: "user",
            balance: 500,
            totalEarned: 0,
@@ -61,6 +79,7 @@ export default function Login() {
            createdAt: Date.now()
         };
         await setDoc(userDocRef, userData);
+        localStorage.removeItem('sponsor');
       }
       
       toast.success('Google Login successful!');
